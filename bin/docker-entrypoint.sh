@@ -46,7 +46,7 @@ gpg_import_key() {
 
 gen_ssl_cert() {
   openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 \
-    -subj "/C=FR/ST=Denial/L=Springfield/O=Dis/CN=www.passbolt.local" \
+    -subj '/C=FR/ST=Denial/L=Springfield/O=Dis/CN=www.passbolt.local' \
     -keyout $ssl_key -out $ssl_cert
 }
 
@@ -76,14 +76,6 @@ install() {
   fi
 }
 
-email_cron_job() {
-  cron_task='/home/www-data/passbolt_email'
-  declare -p | grep -Ev 'BASHOPTS|BASH_VERSINFO|EUID|PPID|SHELLOPTS|UID' > /home/www-data/.profile
-  if [ ! -f "$cron_task" ]; then
-    echo "* * * * * source /home/www-data/.profile ; /var/www/passbolt/bin/cake EmailQueue.sender >> /home/www-data/cron.log 2>&1" >> $cron_task
-    crontab /home/www-data/passbolt_email
-  fi
-}
 
 if [ ! -f "$gpg_private_key" ] && [ ! -L "$gpg_private_key" ] || \
    [ ! -f "$gpg_public_key" ] && [ ! -L "$gpg_public_key" ]; then
@@ -99,6 +91,5 @@ if [ ! -f "$ssl_key" ] && [ ! -L "$ssl_key" ] && \
 fi
 
 install
-email_cron_job
 
 /usr/bin/supervisord -n
