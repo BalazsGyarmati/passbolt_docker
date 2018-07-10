@@ -1,7 +1,7 @@
 version: '3.4'
 services:
   db:
-    image: mariadb:10.3
+    image: centos/mariadb
     env_file:
       - env/mysql.env
     volumes:
@@ -10,7 +10,7 @@ services:
       - 3306
 
   passbolt:
-    image: passbolt/passbolt:2.1.0-debian
+    image: passbolt/passbolt:2.1.0-debian-openshift
     tty: true
     depends_on:
       - db
@@ -24,8 +24,8 @@ services:
       - /run
     command: ["/usr/bin/wait-for.sh", "db:3306", "--", "/docker-entrypoint.sh"]
     ports:
-      - 80:80
-      - 443:443
+      - 80:8080
+      - 443:8443
 
 volumes:
   database_volume:
