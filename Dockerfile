@@ -44,8 +44,7 @@ RUN apt-get update \
          netcat \
          cron \
     && mkdir /home/www-data \
-    && chown -R www-data:www-data /home/www-data \
-    && usermod -d /home/www-data www-data \
+    && chown -R root:root /home/www-data \
     && docker-php-source extract \
     && for i in $PECL_PASSBOLT_EXTENSIONS; do \
          mkdir $PHP_EXT_DIR/$i; \
@@ -67,11 +66,36 @@ RUN apt-get update \
     && mv composer.phar /usr/local/bin/composer \
     && curl -sSL $PASSBOLT_URL | tar zxf - -C . --strip-components 1 \
     && composer install -n --no-dev --optimize-autoloader \
-    && chown -R www-data:www-data . \
+    && sed -i -e '/user/!b' -e '/www-data/!b' -e '/www-data/d' /etc/nginx/nginx.conf \
+    && sed -i 's:pid /run/nginx.pid:pid /var/cache/nginx/nginx.pid:' /etc/nginx/nginx.conf \
+    && sed -i 's!/var/run/nginx.pid!/var/cache/nginx/nginx.pid!g' /etc/nginx/nginx.conf \
+    && sed -i "/^http {/a \    proxy_temp_path /var/cache/nginx/proxy_temp;\n    client_body_temp_path /var/cache/nginx/client_temp;\n    fastcgi_temp_path /var/cache/nginx/fastcgi_temp;\n    uwsgi_temp_path /var/cache/nginx/uwsgi_temp;\n    scgi_temp_path /var/cache/nginx/scgi_temp;\n" /etc/nginx/nginx.conf \
+    && sed -i 's:/run/nginx.pid:/var/cache/nginx/nginx.pid:' /etc/init.d/nginx \
+    && ln -sf /dev/stdout /var/log/nginx/access.log \
+    && ln -sf /dev/stderr /var/log/nginx/error.log \
+    && sed -i 's:/var/run/crond.pid:/var/cache/crond/crond.pid:' /etc/init.d/cron \
+    && chown -R root:root . \
+    && chmod -R g+w . \
+    && mkdir -p /var/cache/nginx \
+    && chown root:root /var/cache/nginx \
+    && chmod g+rw /var/cache/nginx \
+    && chmod -R g+w /var/log/nginx \
+    && mkdir -p /var/cache/crond \
+    && chown root:root /var/cache/crond \
+    && chmod g+rw /var/cache/crond \
+    && mkdir -p /var/cache/supervisor \
+    && chown -R root:root /var/cache/supervisor \
+    && chmod -R g+w  /var/cache/supervisor \
+    && chmod -R g+w /var/log/supervisor \
+    && mkdir -p /etc/ssl/passbolt-certs \
+    && chown root:root /etc/ssl/passbolt-certs \
+    && chmod g+rw /etc/ssl/passbolt-certs \
     && chmod 775 $(find /var/www/passbolt/tmp -type d) \
     && chmod 664 $(find /var/www/passbolt/tmp -type f) \
     && chmod 775 $(find /var/www/passbolt/webroot/img/public -type d) \
     && chmod 664 $(find /var/www/passbolt/webroot/img/public -type f) \
+    && chmod -R g+rw /home/www-data \
+    && chmod g=u /etc/passwd \
     && rm /etc/nginx/sites-enabled/default \
     && apt-get purge -y --auto-remove $PASSBOLT_DEV_PACKAGES \
     && rm -rf /var/lib/apt/lists/* \
@@ -81,6 +105,6 @@ COPY conf/passbolt.conf /etc/nginx/conf.d/default.conf
 COPY conf/supervisord.conf /etc/supervisor/supervisord.conf
 COPY bin/docker-entrypoint.sh /docker-entrypoint.sh
 
-EXPOSE 80 443
+EXPOSE 8080 8443
 
 CMD ["/docker-entrypoint.sh"]
